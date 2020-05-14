@@ -45,8 +45,8 @@ Param
     [ValidatePattern('.log$')]
     [string]$log,
     [Parameter(Mandatory = $false,
-    HelpMessage = "OU to search, default is DC=smrcy,DC=com, or everything")]
-    [string]$searchbase = 'DC=smrcy,DC=com',
+    HelpMessage = "OU to search, default is everything in current computer domain")]
+    [string]$searchbase,
     [Parameter(Mandatory = $false,
     HelpMessage = "Only work with the top X number of results, limits the total results pool that disable/delete runs from, not the individual disable/delete numbers")]
     [Int]$top = 100000
@@ -56,6 +56,9 @@ if ($Delete -le $Disable){
 }
 ##########-modules-##########
 import-module activedirectory
+if ($null -eq $searchbase){
+    $searchbase = (get-addomain).DistinguishedName
+}
 filter timestamp {"$(Get-Date -Format "yyyy-MM-dd_HH.mm.ss"): $_"}
 function Get-StaleComputers { 
     <#

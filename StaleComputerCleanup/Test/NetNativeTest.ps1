@@ -1,6 +1,8 @@
 Add-Type -AssemblyName System.DirectoryServices.AccountManagement
 $ctype = [System.DirectoryServices.AccountManagement.ContextType]::Domain
-$context = New-Object -TypeName System.DirectoryServices.AccountManagement.PrincipalContext -ArgumentList $ctype, "smrcy.com", "DC=smrcy,DC=com"
+$domain = ([System.DirectoryServices.ActiveDirectory.Domain]::GetComputerDomain()).Name
+$dn = ("DC=$domain").replace('.',',DC=')
+$context = New-Object -TypeName System.DirectoryServices.AccountManagement.PrincipalContext -ArgumentList $ctype,$domain,$dn
 #$compObject = [System.DirectoryServices.AccountManagement.ComputerPrincipal]::FindByIdentity($context,$env:COMPUTERNAME)
 $search = [System.DirectoryServices.AccountManagement.ComputerPrincipal]::FindByPasswordSetTime($Context,[System.DateTime]::UtcNow.AddDays(-180),4)
 #$search | Select-Object Name,LastPasswordSet,LastLogon | export-csv c:\temp\180.csv -notype

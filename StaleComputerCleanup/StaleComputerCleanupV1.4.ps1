@@ -19,7 +19,7 @@ Skips the confirmation to delete computers. USE WITH CAUTION!
 #>
 <#
 Changelog
-V1.4    Change from lastlogon to passwordLastSet
+V1.4    Change add passwordLastSet comparison for computers that may not be logged into but are still active
 V1.3    Added parameter to only select top X number of results, will pull oldest results by PasswordLastSet first
         Also change path of CSV file to match path of Log so less parameters to mess with
 V1.2    Filtered results to only include Workstation OS
@@ -53,6 +53,9 @@ Param
 )
 if ($Delete -le $Disable){
     Throw "$($Delete) is not a valid entry. -Delete must be greater than -Disable"
+}
+if(!($searchbase)){
+    $searchbase = (get-addomain).DistinguishedName
 }
 ##########-modules-##########
 import-module activedirectory

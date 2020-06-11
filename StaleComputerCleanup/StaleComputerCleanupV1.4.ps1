@@ -19,6 +19,7 @@ Skips the confirmation to delete computers. USE WITH CAUTION!
 #>
 <#
 Changelog
+V1.5    Removed "Top" and changed to work with SIU
 V1.4    Change add passwordLastSet comparison for computers that may not be logged into but are still active
 V1.3    Added parameter to only select top X number of results, will pull oldest results by PasswordLastSet first
         Also change path of CSV file to match path of Log so less parameters to mess with
@@ -46,10 +47,7 @@ Param
     [string]$log,
     [Parameter(Mandatory = $false,
     HelpMessage = "OU to search, default is everything in current computer domain")]
-    [string]$searchbase,
-    [Parameter(Mandatory = $false,
-    HelpMessage = "Only work with the top X number of results, limits the total results pool that disable/delete runs from, not the individual disable/delete numbers")]
-    [Int]$top = 100000
+    [string]$searchbase
 )
 if ($Delete -le $Disable){
     Throw "$($Delete) is not a valid entry. -Delete must be greater than -Disable"
@@ -87,10 +85,7 @@ function Get-StaleComputers {
         [string]$file,
         [Parameter(Mandatory = $false,
         HelpMessage = "OU to search, default is DC=smrcy,DC=com, or everything")]
-        [string]$searchbase = 'DC=smrcy,DC=com',
-        [Parameter(Mandatory = $false,
-        HelpMessage = "Only work with the top X number of results, limits the total results pool that disable/delete runs from, not the individual disable/delete numbers")]
-        [Int]$top = 100000
+        [string]$searchbase = 'DC=ad,DC=siu,DC=edu'
     )
     $select = @(
     @{Name="LastLogonTimeStamp";Expression={([datetime]::FromFileTime($_.LastLogonTimeStamp))}}
@@ -107,13 +102,18 @@ function Get-StaleComputers {
     'SID'
     'LastLogonDate'
     )
-    $filter = {LastLogonTimeStamp -lt $Time -and PasswordLastSet -lt $Time -and (Operatingsystem -like 'Windows XP*' -or Operatingsystem -like 'Windows Vista*' -or Operatingsystem -like 'Windows 7*' -or Operatingsystem -like 'Windows 8*' -or Operatingsystem -like 'Windows 10*' -or Operatingsystem -like 'Windows 2000 Pro*') }
+    $filter = {LastLogonTimeStamp -lt $Time -and PasswordLastSet -lt $Time }#-and (Operatingsystem -like 'Windows XP*' -or Operatingsystem -like 'Windows Vista*' -or Operatingsystem -like 'Windows 7*' -or Operatingsystem -like 'Windows 8*' -or Operatingsystem -like 'Windows 10*' -or Operatingsystem -like 'Windows 2000 Pro*')}
     $Time = (Get-Date).Adddays(-($Days))
-    $stale = Get-ADComputer -Filter $filter -Properties LastLogonTImeStamp,Name,Enabled,Passwordlastset,modified,created,operatingsystem,description,location,ipv4address,distinguishedname,sid,lastlogondate -SearchBase $searchbase | Sort-Object -Property PasswordLastSet | select-object $select -First $top
-    if ($null -ne $file){
-        $stale | Export-Csv $file -NoTypeInformation
+    $stale = Get-ADComputer -Filter $filter -SearchBase $searchbase -Properties PasswordLastSet | Sort-Object -Property PasswordLastSet 
+    $all = @()
+    foreach($object in $stale){
+        $fulldata = Get-ADComputer -Identity $object.SID -Properties LastLogonTImeStamp,Name,Enabled,Passwordlastset,modified,created,operatingsystem,description,location,ipv4address,distinguishedname,sid,lastlogondate | select-object $select
+        $all += $fulldata
     }
-    return $stale
+    if ($null -ne $file){
+        $all | Export-Csv $file -NoTypeInformation
+    }
+    return $all
 }
 function Disable-Computers {
     <#
@@ -193,8 +193,8 @@ $DeleteDate = (Get-Date).Adddays(-($Delete))
 $timestamp = (timestamp).replace(': ','')
 $csv = $log -Replace "\.log","_$timestamp.csv"
 ##########-do work-##########
-"Script started. Disable=$disable, Delete=$delete, Log=$log, Top=$top, Whatif=$whatif, Confirm=$confirm, Searchbase=$searchbase" | timestamp | Out-File $log -Append
-$Stale = Get-StaleComputers -days $Disable -file $csv -SearchBase $searchbase -top $top
+"Script started. Disable=$disable, Delete=$delete, Log=$log, Whatif=$whatif, Confirm=$confirm, Searchbase=$searchbase" | timestamp | Out-File $log -Append
+$Stale = Get-StaleComputers -days $Disable -file $csv -SearchBase $searchbase 
 $StaleDelete = $Stale | Where-Object PasswordLastSet -lt $DeleteDate
 $Stalecount = ($Stale | Where-Object Enabled -EQ 'True').Count
 $DeleteCount = ($StaleDelete | Where-Object Enabled -NE 'True').Count
@@ -211,4 +211,4 @@ if(!$whatif){
 } else{
     "Whatif - $StaleCount would have been disabled and $deletecount would have been deleted."
 }
-"Script Ended. Disable=$disable, Delete=$delete, Log=$log, Top=$top, Whatif=$whatif, Confirm=$confirm, Searchbase=$searchbase" | timestamp | Out-File $log -Append
+"Script Ended. Disable=$disable, Delete=$delete, Log=$log, Whatif=$whatif, Confirm=$confirm, Searchbase=$searchbase" | timestamp | Out-File $log -Append

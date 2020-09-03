@@ -106,9 +106,9 @@ function Get-StaleComputers {
     'SID'
     'LastLogonDate'
     )
-    $filter = {LastLogonTimeStamp -lt $Time -and PasswordLastSet -lt $Time }#-and (Operatingsystem -like 'Windows XP*' -or Operatingsystem -like 'Windows Vista*' -or Operatingsystem -like 'Windows 7*' -or Operatingsystem -like 'Windows 8*' -or Operatingsystem -like 'Windows 10*' -or Operatingsystem -like 'Windows 2000 Pro*')}
+    $filter = {(LastLogonTimeStamp -lt $Time -and PasswordLastSet -lt $Time) -or (LastLogonTimeStamp -notlike '*' -and PasswordLastSet -lt $time)}#-and (Operatingsystem -like 'Windows XP*' -or Operatingsystem -like 'Windows Vista*' -or Operatingsystem -like 'Windows 7*' -or Operatingsystem -like 'Windows 8*' -or Operatingsystem -like 'Windows 10*' -or Operatingsystem -like 'Windows 2000 Pro*')}
     $Time = (Get-Date).Adddays(-($Days))
-    $stale = Get-ADComputer -Filter $filter -SearchBase $searchbase -Properties PasswordLastSet | Sort-Object -Property PasswordLastSet | Select-Object -First 5
+    $stale = Get-ADComputer -Filter $filter -SearchBase $searchbase -Properties PasswordLastSet | Sort-Object -Property PasswordLastSet
     $all = @()
     foreach($object in $stale){
         $fulldata = Get-ADComputer -Identity $object.SID -Properties LastLogonTImeStamp,Name,Enabled,Passwordlastset,modified,created,operatingsystem,description,location,ipv4address,distinguishedname,sid,lastlogondate | select-object $select

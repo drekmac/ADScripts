@@ -1,5 +1,5 @@
-#This script searches through the default Computers container
-# 
+#This script searches through the default Computers container and moves any it finds where they need to go,
+#or in the OU of Shame if it can't figure it out.
 Function Add-TeamsAlert {
     Param (
         [Parameter(Mandatory=$true)]
